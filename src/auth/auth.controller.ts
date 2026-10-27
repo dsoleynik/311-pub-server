@@ -17,6 +17,7 @@ import {
   EmailTokenInputSchema,
   EmailCodeInputSchema,
   ResetPasswordInputSchema,
+  NewPasswordSchema,
 } from "@311/gravum-contracts";
 import { AuthService } from "./auth.service";
 import { BrowserRequestSecurity } from "./browser-request-security";
@@ -27,6 +28,15 @@ export class AuthController {
     private readonly auth: AuthService,
     private readonly browser: BrowserRequestSecurity,
   ) {}
+  @Get("auth/policy") policy() {
+    return {
+      ok: true,
+      data: {
+        minLength: NewPasswordSchema.minLength,
+        maxLength: NewPasswordSchema.maxLength,
+      },
+    };
+  }
   @Post("auth/login")
   @HttpCode(200)
   async login(

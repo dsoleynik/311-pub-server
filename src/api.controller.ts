@@ -60,6 +60,130 @@ export class ApiController {
   @Get("workspace") workspace(@Req() req: ContextRequest) {
     return this.query(req, { type: "workspace" });
   }
+  @Get("company") company() {
+    return {
+      ok: true,
+      data: {
+        name: "311",
+        phone: process.env.COMPANY_PHONE ?? "",
+        email: process.env.COMPANY_EMAIL ?? "",
+        hours: process.env.COMPANY_HOURS ?? "",
+        profileUrl: "https://erp.gravum.com/profile",
+      },
+    };
+  }
+  @Get("care/:id/document") async careDocument(
+    @Req() req: ContextRequest,
+    @Param("id") id: string,
+    @Res() res: Response,
+  ) {
+    if (!z.uuid().safeParse(id).success) throw new BadRequestException();
+    const r = await this.core.call(await this.token(req, false), {
+      type: "care.document",
+      id,
+    });
+    res.setHeader("Content-Disposition", 'inline; filename="311-care.pdf"');
+    res.type("application/pdf").send(Buffer.from(r.data.data, "base64"));
+  }
+  @Get("properties/:id/access") access(
+    @Req() req: ContextRequest,
+    @Param("id") id: string,
+  ) {
+    if (!z.uuid().safeParse(id).success) throw new BadRequestException();
+    return this.query(req, { type: "property.access", propertyId: id });
+  }
+  @Get("jobs/:id/access") async jobAccess(
+    @Req() req: ContextRequest,
+    @Param("id") id: string,
+  ) {
+    if (!z.uuid().safeParse(id).success) throw new BadRequestException();
+    const token = await this.token(req, false),
+      w = await this.core.call(token, { type: "workspace" });
+    const job = w.data.jobs.find((j: any) => j.id === id);
+    if (!job) throw new BadRequestException();
+    return this.query(req, {
+      type: "property.access",
+      propertyId: job.propertyId,
+      jobId: id,
+    });
+  }
+  @Get("jobs/:id/property") jobProperty(
+    @Req() req: ContextRequest,
+    @Param("id") id: string,
+  ) {
+    if (!z.uuid().safeParse(id).success) throw new BadRequestException();
+    return this.query(req, { type: "job.property", jobId: id });
+  }
+  @Get(["attachments/:id", "backoffice/attachments/:id"]) async attachment(
+    @Req() req: ContextRequest,
+    @Param("id") id: string,
+    @Res() res: Response,
+  ) {
+    if (!z.uuid().safeParse(id).success) throw new BadRequestException();
+    const bo = req.path.includes("/backoffice/");
+    const r = await this.core.call(
+      await this.token(req, bo),
+      { type: "attachment", id },
+      undefined,
+      bo,
+    );
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename*=UTF-8''${encodeURIComponent(r.data.name)}`,
+    );
+    res.type(r.data.mime).send(Buffer.from(r.data.data, "base64"));
+  }
+  @Get([
+    "resources/:scope/:id/attachments",
+    "backoffice/resources/:scope/:id/attachments",
+  ])
+  async attachments(
+    @Req() req: ContextRequest,
+    @Param("scope") scope: "job" | "ticket" | "property",
+    @Param("id") id: string,
+  ) {
+    if (
+      !z.uuid().safeParse(id).success ||
+      !["job", "ticket", "property"].includes(scope)
+    )
+      throw new BadRequestException();
+    return this.query(
+      req,
+      { type: "attachments", scope, resourceId: id },
+      req.path.includes("/backoffice/"),
+    );
+  }
+  @Get([
+    "jobs/:id/documents/:kind/:version",
+    "backoffice/jobs/:id/documents/:kind/:version",
+  ])
+  async document(
+    @Req() req: ContextRequest,
+    @Param("id") id: string,
+    @Param("kind") kind: "quote" | "report",
+    @Param("version") version: string,
+    @Res() res: Response,
+  ) {
+    if (
+      !z.uuid().safeParse(id).success ||
+      !["quote", "report"].includes(kind) ||
+      !/^\d{1,6}$/.test(version) ||
+      Number(version) < 1
+    )
+      throw new BadRequestException();
+    const bo = req.path.includes("/backoffice/"),
+      r = await this.core.call(
+        await this.token(req, bo),
+        { type: "document", jobId: id, kind, version: Number(version) },
+        undefined,
+        bo,
+      );
+    res.setHeader(
+      "Content-Disposition",
+      `inline; filename="311-${kind}-v${version}.pdf"`,
+    );
+    res.type("application/pdf").send(Buffer.from(r.data.data, "base64"));
+  }
   @Get("notifications/:id/delivery") delivery(
     @Req() req: ContextRequest,
     @Param("id") id: string,

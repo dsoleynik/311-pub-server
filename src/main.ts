@@ -44,7 +44,7 @@ class HealthController {
 class AppModule {}
 async function main() {
   const app = await NestFactory.create(AppModule, { bodyParser: false });
-  app.use(json({ limit: "3mb" }));
+  app.use(json({ limit: "15mb" }));
   app.use(requestContext);
   app.setGlobalPrefix("api");
   app.useGlobalFilters(new HttpErrorFilter());
