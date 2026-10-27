@@ -60,6 +60,13 @@ export class ApiController {
   @Get("workspace") workspace(@Req() req: ContextRequest) {
     return this.query(req, { type: "workspace" });
   }
+  @Get("notifications/:id/delivery") delivery(
+    @Req() req: ContextRequest,
+    @Param("id") id: string,
+  ) {
+    if (!z.uuid().safeParse(id).success) throw new BadRequestException();
+    return this.query(req, { type: "notification.delivery", id });
+  }
   @Get("backoffice/crew") staff(@Req() req: ContextRequest) {
     return this.query(req, { type: "crew.list" }, true);
   }
